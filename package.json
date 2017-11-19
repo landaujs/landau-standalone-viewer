@@ -201,6 +201,7 @@
     "react-router": "^4.1.1",
     "react-router-dom": "^4.1.1",
     "react-router-redux": "^5.0.0-alpha.6",
+    "react-split-pane": "^0.1.71",
     "react-three-renderer": "^3.2.3",
     "react-treebeard": "^2.1.0",
     "redux": "^3.7.1",
