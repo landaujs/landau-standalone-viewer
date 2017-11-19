@@ -187,7 +187,6 @@
   },
   "dependencies": {
     "@jscad/csg": "^0.3.7",
-    "chokidar": "^1.7.0",
     "devtron": "^1.4.0",
     "electron-debug": "^1.2.0",
     "font-awesome": "^4.7.0",
