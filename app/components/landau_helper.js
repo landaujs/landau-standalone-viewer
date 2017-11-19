@@ -1,40 +1,8 @@
 import * as THREE from 'three';
 import { CSG } from '@jscad/csg';
 
-const exec = require('child_process').exec;
-
-// const packagerUrl = atom.config.get('landau-viewer.packagerUrl');
+// TODO: make configurable
 const packagerUrl = 'http://localhost:1938';
-
-const execute = (command, callback) => {
-  exec(command, (error, stdout, stderr) => {
-    callback(stdout);
-    if (stderr) {
-      console.error(stderr);
-    }
-  });
-};
-
-const renderCommand = (options) => {
-  const command = "curl --request POST \
-                      --url PACKAGER_URL/render \
-                      --header 'content-type: application/json' \
-                      --data 'OPTIONS'"
-      .replace('OPTIONS', JSON.stringify(options))
-      .replace('PACKAGER_URL', packagerUrl);
-  return command;
-};
-
-
-const treeCommand = (options) => {
-  const command = "curl --request POST \
-                          --url PACKAGER_URL/tree \
-                          --header 'content-type: application/json' \
-                          --data 'OPTIONS'"
-      .replace('OPTIONS', JSON.stringify(options))
-      .replace('PACKAGER_URL', packagerUrl);
-  return command;
-};
 
 const jsonToCSG = (json) => CSG.fromPolygons(json.polygons);
 
@@ -144,8 +112,8 @@ const renderedFromPackager = (mainOpts, cb) => {
       if (remaining.length === 0) {
         callback(finished);
       } else {
-        execute(renderCommand(remaining.shift()), (mainJson) => {
-          const cvrt = jsonToCSG(JSON.parse(mainJson.trim()));
+        renderRequest(remaining.shift(), (mainJson) => {
+          const cvrt = jsonToCSG(mainJson);
 
           finished.push(cvrt);
           recurse(finished, remaining);
@@ -157,19 +125,29 @@ const renderedFromPackager = (mainOpts, cb) => {
   };
 
   const childOpts = [];
-  // Array.from(Array(self.treeSize[self.treePosView] || 0).keys()).forEach(function (i) {
-  //   childOpts.push({ module_path: self.pathname, pos: self.treePosView.concat([i]) });
-  // });
-
   getRendered([mainOpts].concat(childOpts), cb);
 };
 
+const renderRequest = (options, cb) => {
+  fetch(`${packagerUrl}/render`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(options),
+  })
+  .then((res) => res.json().then((json) => cb(json)));
+};
 
 const treeFromPackager = (mainOpts, cb) => {
-  execute(treeCommand(mainOpts), (output) => {
-    const json = JSON.parse(output.trim());
-    cb(json);
-  });
+  fetch(`${packagerUrl}/tree`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(mainOpts),
+  })
+  .then((res) => res.json().then((json) => cb(json)));
 };
 
 module.exports = {
