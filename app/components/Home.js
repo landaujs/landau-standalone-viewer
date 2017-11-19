@@ -2,10 +2,9 @@
 import React, { Component } from 'react';
 import React3 from 'react-three-renderer';
 import * as THREE from 'three';
-import _ from 'lodash-es';
-import { Treebeard, decorators as treeDecorators } from 'react-treebeard';
 import Mousetrap from 'mousetrap';
 
+import TreeView from './TreeView';
 import { convertFromCsg, renderedFromPackager, treeFromPackager } from './landau_helper';
 
 const OrbitControls = require('three-orbit-controls')(THREE);
@@ -16,22 +15,22 @@ type Props = {
 };
 
 type State = {
-  hoveredChildPos: ?TreePos,
-  selectedPos: ?TreePos,
-  collapsedChildPos: Array<TreePos>,
+  treeViewHovered: ?TreePos,
+  treeViewSelected: ?TreePos,
+  treeViewCollapsedChildren: Array<TreePos>,
 };
 
 export default class Home extends Component<Props, State> {
   state = {
     cubeRotation: new THREE.Euler(),
-    modulePath: '/Users/hobofan/stuff/snappy-reprap/landau/scratchpad3.js',
+    modulePath: process.env.LANDAU_MODULE, // TODO: arguments should be parsed somewhere more central
     mainRendered: null,
     treebeardData: null,
     renderedChildren: {},
     // tree view
-    hoveredChildPos: null,
-    selectedPos: [],
-    collapsedChildPos: [],
+    treeViewHovered: null,
+    treeViewSelected: [],
+    treeViewCollapsedChildren: [],
   }
   cameraPosition = new THREE.Vector3(25, 0, 25);
 
@@ -46,17 +45,17 @@ export default class Home extends Component<Props, State> {
   reloadModule = () => {
     this.setState({
       renderedChildren: {},
-      hoveredChildPos: null,
-      selectedPos: [],
-      collapsedChildPos: [],
+      treeViewHovered: null,
+      treeViewSelected: [],
+      treeViewCollapsedChildren: [],
     });
     this.requestRendered();
     this.requestTree();
   }
 
   requestRendered = () => {
-    const { modulePath, selectedPos } = this.state;
-    const mainOpts = { module_path: modulePath, pos: selectedPos };
+    const { modulePath, treeViewSelected } = this.state;
+    const mainOpts = { module_path: modulePath, pos: treeViewSelected };
     this.setState({ mainRendered: null });
     renderedFromPackager(mainOpts, (res) => {
       const firstElement = convertFromCsg(res[0]);
@@ -70,8 +69,8 @@ export default class Home extends Component<Props, State> {
   }
 
   requestTree = () => {
-    const { modulePath, selectedPos } = this.state;
-    const mainOpts = { module_path: modulePath, pos: selectedPos };
+    const { modulePath, treeViewSelected } = this.state;
+    const mainOpts = { module_path: modulePath, pos: treeViewSelected };
     this.setState({ treebeardData: {} });
     treeFromPackager(mainOpts, (res) => {
       const treebeardData = this.transformTreeToTreebeard(res);
@@ -142,128 +141,26 @@ export default class Home extends Component<Props, State> {
     new OrbitControls(camera);
   }
 
-  onTreeNodeClick = (node: { treePos: TreePos }) => {
-    this.setState({
-      selectedPos: node.treePos,
-    }, () => {
+  handleTreeViewHoveredChange = (val) => {
+    this.setState({ treeViewHovered: val });
+  }
+
+  handleTreeViewSelectedChange = (val) => {
+    this.setState({ treeViewSelected: val }, () => {
       this.requestRendered();
     });
   }
 
-  onTreeNodeToggle = (nodePos: TreePos) => {
-    this.setState({
-      collapsedChildPos: _.xor(this.state.collapsedChildPos, [nodePos]),
-    });
-  }
-
-  onTreeNodeHover = (nodePos: TreePos) => {
-    if (nodePos !== this.state.hoveredChildPos) {
-      this.setState({
-        hoveredChildPos: nodePos,
-      });
-    }
-  }
-
-  onTreeNodeHoverLeave = (nodePos: TreePos) => {
-    if (nodePos === this.state.hoveredChildPos) {
-      this.setState({
-        hoveredChildPos: null,
-      });
-    }
-  }
-
-  treeData = () => {
-    let data = this.state.treebeardData || {};
-    data = _.clone(data);
-
-    const { selectedPos } = this.state;
-    const makeModifier = (modifier) => {
-      const modify = (obj, remainingPos) => {
-        if (_.isEmpty(remainingPos)) {
-          return modifier(obj);
-        }
-
-        const children = obj.children.map((child, i) => {
-          const [j, ...childRemainingPos] = remainingPos;
-          if (i === j) {
-            return modify(child, childRemainingPos);
-          }
-          return child;
-        });
-        return {
-          ...obj,
-          children,
-        };
-      };
-      return modify;
-    };
-
-    const markSelected = makeModifier((obj) => {
-      const newObj = _.clone(obj);
-      newObj.active = true;
-      return newObj;
-    });
-    data = markSelected(data, selectedPos);
-
-    const markCollapsed = makeModifier((obj) => {
-      const newObj = _.clone(obj);
-      newObj.toggled = false;
-      return newObj;
-    });
-    this.state.collapsedChildPos.forEach((collapsedPos) => {
-      data = markCollapsed(data, collapsedPos);
-    });
-
-    return data;
-  }
-
-  renderTreeview = () => {
-    const self = this;
-    const decorators = Object.assign({}, treeDecorators, {
-      Toggle: (props) => {
-        return (
-          <div style={props.style.base} onClick={() => this.onTreeNodeToggle(props.node.treePos)}>
-            <treeDecorators.Toggle {...props} />
-          </div>
-        );
-      },
-    });
-    class Container extends treeDecorators.Container {
-      renderToggleDecorator() {
-        const {style, decorators} = this.props;
-
-        return <decorators.Toggle {...this.props} style={style.toggle}/>;
-      }
-    }
-    class TwiceContainer extends React.Component {
-      render() {
-        return (
-          <div
-            onMouseOver={() => self.onTreeNodeHover(this.props.node.treePos)}
-            onMouseLeave={() => self.onTreeNodeHoverLeave(this.props.node.treePos)}
-          >
-            <Container {...this.props} />
-          </div>
-        );
-      }
-    }
-    decorators.Container = TwiceContainer;
-
-    return (
-      <Treebeard
-        data={this.treeData()}
-        decorators={decorators}
-        onToggle={this.onTreeNodeClick}
-      />
-    );
+  handleTreeViewCollapsedChildrenChange = (val) => {
+    this.setState({ treeViewCollapsedChildren: val });
   }
 
   render() {
-    const { mainRendered, hoveredChildPos } = this.state;
+    const { mainRendered, treeViewHovered } = this.state;
     const width = 1000;
     const height = 500;
 
-    const hoveredChild = this.state.renderedChildren[hoveredChildPos];
+    const hoveredChild = this.state.renderedChildren[treeViewHovered];
 
     return (
       <div >
@@ -337,7 +234,16 @@ export default class Home extends Component<Props, State> {
           </scene>
         </React3>
         <div style={{ display: 'inline-block', width: '100%', top: 0, position: 'absolute' }}>
-          { this.renderTreeview() }
+          <TreeView
+            treebeardData={this.state.treebeardData}
+            
+            selected={this.state.treeViewSelected}
+            collapsedChildren={this.state.treeViewCollapsedChildren}
+
+            onHoveredChange={this.handleTreeViewHoveredChange}
+            onSelectedChange={this.handleTreeViewSelectedChange}
+            onCollapsedChildrenChange={this.handleTreeViewCollapsedChildrenChange}
+          />
         </div>
       </div>
     );
