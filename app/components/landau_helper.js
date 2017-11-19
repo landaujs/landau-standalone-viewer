@@ -27,7 +27,7 @@ const renderCommand = (options) => {
 
 
 const treeCommand = (options) => {
-  var command = "curl --request POST \
+  const command = "curl --request POST \
                           --url PACKAGER_URL/tree \
                           --header 'content-type: application/json' \
                           --data 'OPTIONS'"

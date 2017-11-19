@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import React3 from 'react-three-renderer';
 import * as THREE from 'three';
 import Mousetrap from 'mousetrap';
+import chokidar from 'chokidar';
 
 import TreeView from './TreeView';
 import { convertFromCsg, renderedFromPackager, treeFromPackager } from './landau_helper';
@@ -17,7 +18,7 @@ type Props = {
 type State = {
   treeViewHovered: ?TreePos,
   treeViewSelected: ?TreePos,
-  treeViewCollapsedChildren: Array<TreePos>,
+  treeViewCollapsedChildren: Array<TreePos>
 };
 
 export default class Home extends Component<Props, State> {
@@ -36,6 +37,9 @@ export default class Home extends Component<Props, State> {
 
   componentDidMount() {
     this.reloadModule();
+    chokidar.watch(this.state.modulePath).on('all', (event, path) => {
+      this.reloadModule();
+    });
 
     Mousetrap.bind('alt+r', () => {
       this.reloadModule();
@@ -99,6 +103,10 @@ export default class Home extends Component<Props, State> {
   prefetchChildren = () => {
     const { modulePath } = this.state;
     const allTreePos = this.allTreePositions();
+    // Turn of prefetching if there are too many children for performance reasons
+    if (allTreePos.length > 20) {
+      return;
+    }
     allTreePos.forEach((treePos) => {
       const mainOpts = { module_path: modulePath, pos: treePos };
       renderedFromPackager(mainOpts, (res) => {
@@ -111,9 +119,9 @@ export default class Home extends Component<Props, State> {
         this.setState({ renderedChildren: {
           ...this.state.renderedChildren,
           ...renderedChild,
-        }});
+        } });
       });
-    })
+    });
   }
 
   transformTreeToTreebeard = (tree) => {
@@ -132,7 +140,7 @@ export default class Home extends Component<Props, State> {
         treePos,
         toggled: true,
       };
-    }
+    };
     return mapObject(tree);
   }
 
@@ -236,7 +244,7 @@ export default class Home extends Component<Props, State> {
         <div style={{ display: 'inline-block', width: '100%', top: 0, position: 'absolute' }}>
           <TreeView
             treebeardData={this.state.treebeardData}
-            
+
             selected={this.state.treeViewSelected}
             collapsedChildren={this.state.treeViewCollapsedChildren}
 
