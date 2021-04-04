@@ -1,20 +1,25 @@
 // @flow
-import React, { Component } from 'react';
-import React3 from 'react-three-renderer';
-import * as THREE from 'three';
-import Mousetrap from 'mousetrap';
-import chokidar from 'chokidar';
-import SplitPane from 'react-split-pane';
+import React, { Component } from "react";
+// import React3 from "react-three-renderer";
+// import * as THREE from 'three';
+import Mousetrap from "mousetrap";
+// TODO: move file watching to -packager with websockets
+import chokidar from "chokidar";
+import SplitPane from "react-split-pane";
 
-import TreeView from './TreeView';
-import { convertFromCsg, renderedFromPackager, treeFromPackager } from './landau_helper';
+import TreeView from "./TreeView";
+import ReglView from "./ReglView";
+import {
+  convertFromCsg,
+  renderedFromPackager,
+  treeFromPackager
+} from "./landau_helper";
 
-const OrbitControls = require('three-orbit-controls')(THREE);
+// const OrbitControls = require('three-orbit-controls')(THREE);
 
 type TreePos = Array<number>;
 
-type Props = {
-};
+type Props = {};
 
 type State = {
   canvasWidth: number,
@@ -24,10 +29,10 @@ type State = {
   treeViewCollapsedChildren: Array<TreePos>
 };
 
-export default class Home extends Component<Props, State> {
+export default class Home extends Component<Props> {
   state = {
-    cubeRotation: new THREE.Euler(),
-    modulePath: process.env.LANDAU_MODULE, // TODO: arguments should be parsed somewhere more central
+    // cubeRotation: new THREE.Euler(),
+    // modulePath: process.env.LANDAU_MODULE, // TODO: arguments should be parsed somewhere more central
     mainRendered: null,
     treebeardData: null,
     renderedChildren: {},
@@ -36,17 +41,17 @@ export default class Home extends Component<Props, State> {
     // tree view
     treeViewHovered: null,
     treeViewSelected: [],
-    treeViewCollapsedChildren: [],
-  }
-  cameraPosition = new THREE.Vector3(25, 0, 25);
+    treeViewCollapsedChildren: []
+  };
+  // cameraPosition = new THREE.Vector3(25, 0, 25);
 
   componentDidMount() {
     this.reloadModule();
-    chokidar.watch(this.state.modulePath).on('all', (event, path) => {
-      this.reloadModule();
-    });
+    // chokidar.watch(this.state.modulePath).on('all', (event, path) => {
+    // this.reloadModule();
+    // });
 
-    Mousetrap.bind('alt+r', () => {
+    Mousetrap.bind("alt+r", () => {
       this.reloadModule();
     });
   }
@@ -56,46 +61,48 @@ export default class Home extends Component<Props, State> {
       renderedChildren: {},
       treeViewHovered: null,
       treeViewSelected: [],
-      treeViewCollapsedChildren: [],
+      treeViewCollapsedChildren: []
     });
     this.requestRendered();
     this.requestTree();
-  }
+  };
 
   requestRendered = () => {
     const { modulePath, treeViewSelected } = this.state;
     const mainOpts = { module_path: modulePath, pos: treeViewSelected };
     this.setState({ mainRendered: null });
-    renderedFromPackager(mainOpts, (res) => {
-      const firstElement = convertFromCsg(res[0]);
+    renderedFromPackager(mainOpts, res => {
+      // const firstElement = convertFromCsg(res[0]);
+      const firstElement = res[0];
+      console.log("firstElement", firstElement);
       this.setState({
-        mainRendered: {
-          vertices: firstElement.geometry.vertices,
-          faces: firstElement.geometry.faces,
-        },
+        solids: [firstElement]
       });
     });
-  }
+  };
 
   requestTree = () => {
     const { modulePath, treeViewSelected } = this.state;
     const mainOpts = { module_path: modulePath, pos: treeViewSelected };
     this.setState({ treebeardData: {} });
-    treeFromPackager(mainOpts, (res) => {
+    treeFromPackager(mainOpts, res => {
       const treebeardData = this.transformTreeToTreebeard(res);
-      this.setState({
-        treebeardData,
-      }, () => this.prefetchChildren());
+      this.setState(
+        {
+          treebeardData
+        },
+        () => this.prefetchChildren()
+      );
     });
-  }
+  };
 
   allTreePositions = () => {
     const { treebeardData } = this.state;
     const positions = [];
     positions.push([]); // root position
     const traverse = (obj, i, parentTreePos) => {
-      let treePos = (parentTreePos || []);
-      if (typeof i !== 'undefined') {
+      let treePos = parentTreePos || [];
+      if (typeof i !== "undefined") {
         treePos = treePos.concat([i]);
       }
       (obj.children || []).map((obj, i) => traverse(obj, i, treePos));
@@ -103,7 +110,7 @@ export default class Home extends Component<Props, State> {
     };
     traverse(treebeardData);
     return positions;
-  }
+  };
 
   prefetchChildren = () => {
     const { modulePath } = this.state;
@@ -112,65 +119,62 @@ export default class Home extends Component<Props, State> {
     if (allTreePos.length > 20) {
       return;
     }
-    allTreePos.forEach((treePos) => {
+    allTreePos.forEach(treePos => {
       const mainOpts = { module_path: modulePath, pos: treePos };
-      renderedFromPackager(mainOpts, (res) => {
-        const firstElement = convertFromCsg(res[0]);
-        const renderedChild = {};
-        renderedChild[treePos] = {
-          vertices: firstElement.geometry.vertices,
-          faces: firstElement.geometry.faces,
-        };
-        this.setState({ renderedChildren: {
-          ...this.state.renderedChildren,
-          ...renderedChild,
-        } });
+      renderedFromPackager(mainOpts, res => {
+        const firstElement = res[0];
+        console.log("firstElement", firstElement);
+        this.setState({
+          solids: [firstElement]
+        });
       });
     });
-  }
+  };
 
-  transformTreeToTreebeard = (tree) => {
+  transformTreeToTreebeard = tree => {
     const mapObject = (obj, i, parentTreePos) => {
-      let treePos = (parentTreePos || []);
-      if (typeof i !== 'undefined') {
+      let treePos = parentTreePos || [];
+      if (typeof i !== "undefined") {
         treePos = treePos.concat([i]);
       }
       const name = obj.elementName;
       const props = obj.props;
-      const children = (obj.children || []).map((obj, i) => mapObject(obj, i, treePos));
+      const children = (obj.children || []).map((obj, i) =>
+        mapObject(obj, i, treePos)
+      );
       return {
         name,
         children,
         props,
         treePos,
-        toggled: true,
+        toggled: true
       };
     };
     return mapObject(tree);
-  }
+  };
 
-  onCameraRef = (camera) => {
+  onCameraRef = camera => {
     camera.lookAt(new THREE.Vector3(0, 0, 0));
-    new OrbitControls(camera, document.getElementById('canvas'));
-  }
+    new OrbitControls(camera, document.getElementById("canvas"));
+  };
 
-  handleCanvasWidthResize = (width) => {
+  handleCanvasWidthResize = width => {
     this.setState({ canvasWidth: width });
-  }
+  };
 
-  handleTreeViewHoveredChange = (val) => {
+  handleTreeViewHoveredChange = val => {
     this.setState({ treeViewHovered: val });
-  }
+  };
 
-  handleTreeViewSelectedChange = (val) => {
+  handleTreeViewSelectedChange = val => {
     this.setState({ treeViewSelected: val }, () => {
       this.requestRendered();
     });
-  }
+  };
 
-  handleTreeViewCollapsedChildrenChange = (val) => {
+  handleTreeViewCollapsedChildrenChange = val => {
     this.setState({ treeViewCollapsedChildren: val });
-  }
+  };
 
   render() {
     const { mainRendered, treeViewHovered, canvasWidth } = this.state;
@@ -179,101 +183,37 @@ export default class Home extends Component<Props, State> {
 
     const hoveredChild = this.state.renderedChildren[treeViewHovered];
     const resizerStyle = {
-      width: '3px',
-      background: '#5f5f5f',
-      borderLeft: '1px #3f3f3f solid',
-      borderRight: '1px #3f3f3f solid',
-      cursor: 'col-resize',
+      width: "3px",
+      background: "#5f5f5f",
+      borderLeft: "1px #3f3f3f solid",
+      borderRight: "1px #3f3f3f solid",
+      cursor: "col-resize"
     };
 
     return (
-      <div >
+      <div>
         <SplitPane
           defaultSize={canvasWidth}
           resizerStyle={resizerStyle}
           onDragFinished={this.handleCanvasWidthResize}
         >
-          <div id="canvas">
-            <React3
-              mainCamera="camera" // this points to the perspectiveCamera which has the name set to "camera" below
+          <div id="canvas" style={{ height: "500px" }}>
+            <ReglView
+              solids={this.state.solids || []}
               width={width}
               height={height}
-              antialias
-
-              clearColor={0xcccccc}
-              shadowMapEnabled
-              shadowMapType={THREE.PCFSoftShadowMap}
-            >
-              <scene>
-                <perspectiveCamera
-                  ref={this.onCameraRef}
-                  name="camera"
-                  fov={75}
-                  aspect={width / height}
-                  near={0.1}
-                  far={1000}
-
-                  position={this.cameraPosition}
-                />
-                <ambientLight />
-                <pointLight
-                  castShadow
-                  intensity={1}
-                  decay={2}
-                  color={0xffffff}
-                  position={new THREE.Vector3(25, 25, 25)}
-                />
-                <axisHelper size={10000} />
-                <gridHelper size={100} step={100} />
-                { mainRendered ? (
-                  <group>
-                    <mesh
-                      castShadow
-                      receiveShadow
-                    >
-                      <geometry
-                        vertices={mainRendered.vertices}
-                        faces={mainRendered.faces}
-                        dynamic
-                      />
-                      <meshPhongMaterial
-                        color={0x64b5f6}
-                      />
-                    </mesh>
-                  </group>
-                  ) : null }
-                { hoveredChild ? (
-                  <group>
-                    <mesh
-                      castShadow
-                      receiveShadow
-                    >
-                      <geometry
-                        vertices={hoveredChild.vertices}
-                        faces={hoveredChild.faces}
-                        dynamic
-                      />
-                      <meshPhongMaterial
-                        transparent
-                        opacity={0.5}
-                        color={0xffee58}
-                      />
-                    </mesh>
-                  </group>
-                  ) : null }
-              </scene>
-            </React3>
+            />
           </div>
-          <div style={{ width: '100%', height: '100%', overflow: 'scroll' }}>
+          <div style={{ width: "100%", height: "100%", overflow: "scroll" }}>
             <TreeView
               treebeardData={this.state.treebeardData}
-
               selected={this.state.treeViewSelected}
               collapsedChildren={this.state.treeViewCollapsedChildren}
-
               onHoveredChange={this.handleTreeViewHoveredChange}
               onSelectedChange={this.handleTreeViewSelectedChange}
-              onCollapsedChildrenChange={this.handleTreeViewCollapsedChildrenChange}
+              onCollapsedChildrenChange={
+                this.handleTreeViewCollapsedChildrenChange
+              }
             />
           </div>
         </SplitPane>

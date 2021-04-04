@@ -186,12 +186,13 @@
     "webpack-merge": "^4.1.0"
   },
   "dependencies": {
-    "@jscad/csg": "^0.3.7",
+    "@jscad/regl-renderer": "hobofan/regl-renderer",
     "devtron": "^1.4.0",
     "electron-debug": "^1.2.0",
     "font-awesome": "^4.7.0",
     "history": "^4.6.3",
     "lodash-es": "^4.17.4",
+    "most-gestures": "^0.4.1",
     "mousetrap": "^1.6.1",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
