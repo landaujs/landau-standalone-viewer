@@ -1,8 +1,10 @@
 import * as THREE from "three";
 // import { CSG } from '@jscad/csg';
+// const WebSocket = require("ws");
 
 // TODO: make configurable
 const packagerUrl = "http://localhost:1938";
+const packagerUrlWs = "ws://localhost:1938";
 
 const jsonToCSG = json => CSG.fromPolygons(json.polygons);
 
@@ -137,6 +139,15 @@ const renderedFromPackager = (mainOpts, cb) => {
   getRendered([mainOpts].concat(childOpts), cb);
 };
 
+const renderedWsFromPackager = (mainOpts, cb) => {
+  const ws = new WebSocket(`${packagerUrlWs}/render`);
+  ws.onmessage = function incoming(data) {
+    console.log("WS message received", data);
+
+    cb([JSON.parse(data.data)]);
+  };
+};
+
 const renderRequest = (options, cb) => {
   fetch(`${packagerUrl}/render`, {
     method: "POST",
@@ -160,5 +171,6 @@ const treeFromPackager = (mainOpts, cb) => {
 module.exports = {
   convertFromCsg,
   renderedFromPackager,
+  renderedWsFromPackager,
   treeFromPackager
 };

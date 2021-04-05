@@ -191,6 +191,7 @@
     "electron-debug": "^1.2.0",
     "font-awesome": "^4.7.0",
     "history": "^4.6.3",
+    "isomorphic-ws": "^4.0.1",
     "lodash-es": "^4.17.4",
     "most-gestures": "^0.4.1",
     "mousetrap": "^1.6.1",
@@ -208,7 +209,8 @@
     "redux-thunk": "^2.2.0",
     "source-map-support": "^0.4.15",
     "three": "0.86.0",
-    "three-orbit-controls": "^82.1.0"
+    "three-orbit-controls": "^82.1.0",
+    "ws": "^7.4.4"
   },
   "devEngines": {
     "node": ">=7.x",

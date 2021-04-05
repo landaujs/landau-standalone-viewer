@@ -12,6 +12,7 @@ import ReglView from "./ReglView";
 import {
   convertFromCsg,
   renderedFromPackager,
+  renderedWsFromPackager,
   treeFromPackager
 } from "./landau_helper";
 
@@ -46,7 +47,9 @@ export default class Home extends Component<Props> {
   // cameraPosition = new THREE.Vector3(25, 0, 25);
 
   componentDidMount() {
-    this.reloadModule();
+    // this.reloadModule();
+    this.subscribeRendered();
+
     // chokidar.watch(this.state.modulePath).on('all', (event, path) => {
     // this.reloadModule();
     // });
@@ -73,6 +76,17 @@ export default class Home extends Component<Props> {
     this.setState({ mainRendered: null });
     renderedFromPackager(mainOpts, res => {
       // const firstElement = convertFromCsg(res[0]);
+      const firstElement = res[0];
+      console.log("firstElement", firstElement);
+      this.setState({
+        solids: [firstElement]
+      });
+    });
+  };
+
+  subscribeRendered = () => {
+    const mainOpts = {}; // TODO: rm
+    renderedWsFromPackager(mainOpts, res => {
       const firstElement = res[0];
       console.log("firstElement", firstElement);
       this.setState({
