@@ -260,7 +260,7 @@
     "react-treebeard": "^2.1.0",
     "regenerator-runtime": "^0.13.5",
     "source-map-support": "^0.5.19",
-    "three": "0.86.0",
+    "three": "0.125.0",
     "three-orbit-controls": "^82.1.0",
     "ws": "^7.4.4"
   },
