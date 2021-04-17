@@ -1,12 +1,12 @@
-import * as THREE from "three";
+import * as THREE from 'three';
 // import { CSG } from '@jscad/csg';
 // const WebSocket = require("ws");
 
 // TODO: make configurable
-const packagerUrl = "http://localhost:1938";
-const packagerUrlWs = "ws://localhost:1938";
+const packagerUrl = 'http://localhost:1938';
+const packagerUrlWs = 'ws://localhost:1938';
 
-const jsonToCSG = json => CSG.fromPolygons(json.polygons);
+const jsonToCSG = (json) => CSG.fromPolygons(json.polygons);
 
 const getGeometryVertex = (geometry, vertex_position) => {
   geometry.vertices.push(
@@ -34,9 +34,9 @@ const fromCsg = (csg, defaultColor) => {
   const opacities = [];
   let materialIdx, opacity, colorKey, polyColor, color;
 
-  polygons.forEach(polygon => {
+  polygons.forEach((polygon) => {
     // polygon shared null? -> defaultColor, else extract color
-    const vertices = polygon.vertices.map(vertex =>
+    const vertices = polygon.vertices.map((vertex) =>
       getGeometryVertex(three_geometry, vertex.pos)
     );
 
@@ -61,7 +61,7 @@ const fromCsg = (csg, defaultColor) => {
     }
 
     // for each different color, create a color object
-    const colorKey = polyColor.join("_");
+    const colorKey = polyColor.join('_');
     if (!(colorKey in colors)) {
       color = new THREE.Color();
       color.setRGB(...polyColor);
@@ -89,25 +89,25 @@ const fromCsg = (csg, defaultColor) => {
 
   // return result;
   return {
-    geometry: three_geometry
+    geometry: three_geometry,
   };
 };
 
-const convertFromCsg = obj => {
+const convertFromCsg = (obj) => {
   const options = {
     faceColor: {
       r: 0.1,
       g: 0.7,
       b: 0.5,
-      a: 1.0
-    } // default face color
+      a: 1.0,
+    }, // default face color
   };
   const faceColor = options.faceColor;
   const defaultColor_ = [
     faceColor.r,
     faceColor.g,
     faceColor.b,
-    faceColor.a || 1
+    faceColor.a || 1,
   ];
   const res = fromCsg(obj, defaultColor_);
 
@@ -121,7 +121,7 @@ const renderedFromPackager = (mainOpts, cb) => {
       if (remaining.length === 0) {
         callback(finished);
       } else {
-        renderRequest(remaining.shift(), mainJson => {
+        renderRequest(remaining.shift(), (mainJson) => {
           // console.log("RES", mainJson);
           // const cvrt = jsonToCSG(mainJson);
 
@@ -142,7 +142,7 @@ const renderedFromPackager = (mainOpts, cb) => {
 const renderedWsFromPackager = (mainOpts, cb) => {
   const ws = new WebSocket(`${packagerUrlWs}/render`);
   ws.onmessage = function incoming(data) {
-    console.log("WS message received", data);
+    console.log('WS message received', data);
 
     cb([JSON.parse(data.data)]);
   };
@@ -150,27 +150,27 @@ const renderedWsFromPackager = (mainOpts, cb) => {
 
 const renderRequest = (options, cb) => {
   fetch(`${packagerUrl}/render`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "content-type": "application/json"
+      'content-type': 'application/json',
     },
-    body: JSON.stringify(options)
-  }).then(res => res.json().then(json => cb(json)));
+    body: JSON.stringify(options),
+  }).then((res) => res.json().then((json) => cb(json)));
 };
 
 const treeFromPackager = (mainOpts, cb) => {
   fetch(`${packagerUrl}/tree`, {
-    method: "POST",
+    method: 'POST',
     headers: {
-      "content-type": "application/json"
+      'content-type': 'application/json',
     },
-    body: JSON.stringify(mainOpts)
-  }).then(res => res.json().then(json => cb(json)));
+    body: JSON.stringify(mainOpts),
+  }).then((res) => res.json().then((json) => cb(json)));
 };
 
-module.exports = {
+export {
   convertFromCsg,
   renderedFromPackager,
   renderedWsFromPackager,
-  treeFromPackager
+  treeFromPackager,
 };

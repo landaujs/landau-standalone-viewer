@@ -8,16 +8,16 @@ type TreePos = Array<number>;
 type Props = {
   treebeardData: any,
 
-  selected: ?TreePos,
+  selected?: TreePos,
   collapsedChildren: Array<TreePos>,
 
-  onHoveredChange: (?TreePos) => void,
-  onSelectedChange: (?TreePos) => void,
-  onCollapsedChildrenChange: (Array<TreePos>) => void,
+  onHoveredChange: (pos?: TreePos) => void,
+  onSelectedChange: (pos?: TreePos) => void,
+  onCollapsedChildrenChange: (children: Array<TreePos>) => void,
 };
 
 type State = {
-  hovered: ?TreePos,
+  hovered?: TreePos,
 }
 
 export default class TreeView extends Component<Props, State> {

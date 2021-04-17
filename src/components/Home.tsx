@@ -23,8 +23,8 @@ type Props = {};
 type State = {
   canvasWidth: number,
 
-  treeViewHovered: ?TreePos,
-  treeViewSelected: ?TreePos,
+  treeViewHovered?: TreePos,
+  treeViewSelected?: TreePos,
   treeViewCollapsedChildren: Array<TreePos>
 };
 
