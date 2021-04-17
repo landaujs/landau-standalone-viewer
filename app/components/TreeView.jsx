@@ -101,6 +101,9 @@ export default class TreeView extends Component<Props, State> {
     const self = this;
     const decorators = Object.assign({}, treeDecorators, {
       Toggle: (props) => {
+        if (props.node.children.length === 0) {
+          return <div style={props.style.base}></div>;
+        }
         return (
           <div style={props.style.base} onClick={() => this.onTreeNodeToggle(props.node.treePos)}>
             <treeDecorators.Toggle {...props} />

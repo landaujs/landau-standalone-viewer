@@ -3,8 +3,6 @@ import React, { Component } from "react";
 // import React3 from "react-three-renderer";
 // import * as THREE from 'three';
 import Mousetrap from "mousetrap";
-// TODO: move file watching to -packager with websockets
-import chokidar from "chokidar";
 import SplitPane from "react-split-pane";
 
 import TreeView from "./TreeView";
@@ -50,10 +48,6 @@ export default class Home extends Component<Props> {
     // this.reloadModule();
     this.subscribeRendered();
 
-    // chokidar.watch(this.state.modulePath).on('all', (event, path) => {
-    // this.reloadModule();
-    // });
-
     Mousetrap.bind("alt+r", () => {
       this.reloadModule();
     });
@@ -67,7 +61,7 @@ export default class Home extends Component<Props> {
       treeViewCollapsedChildren: []
     });
     this.requestRendered();
-    this.requestTree();
+    // this.requestTree();
   };
 
   requestRendered = () => {
@@ -78,7 +72,11 @@ export default class Home extends Component<Props> {
       // const firstElement = convertFromCsg(res[0]);
       const firstElement = res[0];
       console.log("firstElement", firstElement);
+      const treebeardData = this.transformTreeToTreebeard(
+        firstElement.fiberTree
+      );
       this.setState({
+        treebeardData,
         solids: [firstElement]
       });
     });
@@ -89,26 +87,30 @@ export default class Home extends Component<Props> {
     renderedWsFromPackager(mainOpts, res => {
       const firstElement = res[0];
       console.log("firstElement", firstElement);
+      const treebeardData = this.transformTreeToTreebeard(
+        firstElement.fiberTree
+      );
       this.setState({
+        treebeardData,
         solids: [firstElement]
       });
     });
   };
 
-  requestTree = () => {
-    const { modulePath, treeViewSelected } = this.state;
-    const mainOpts = { module_path: modulePath, pos: treeViewSelected };
-    this.setState({ treebeardData: {} });
-    treeFromPackager(mainOpts, res => {
-      const treebeardData = this.transformTreeToTreebeard(res);
-      this.setState(
-        {
-          treebeardData
-        },
-        () => this.prefetchChildren()
-      );
-    });
-  };
+  // requestTree = () => {
+  // const { modulePath, treeViewSelected } = this.state;
+  // const mainOpts = { module_path: modulePath, pos: treeViewSelected };
+  // this.setState({ treebeardData: {} });
+  // treeFromPackager(mainOpts, res => {
+  // const treebeardData = this.transformTreeToTreebeard(res);
+  // this.setState(
+  // {
+  // treebeardData
+  // },
+  // () => this.prefetchChildren()
+  // );
+  // });
+  // };
 
   allTreePositions = () => {
     const { treebeardData } = this.state;
@@ -126,24 +128,24 @@ export default class Home extends Component<Props> {
     return positions;
   };
 
-  prefetchChildren = () => {
-    const { modulePath } = this.state;
-    const allTreePos = this.allTreePositions();
-    // Turn of prefetching if there are too many children for performance reasons
-    if (allTreePos.length > 20) {
-      return;
-    }
-    allTreePos.forEach(treePos => {
-      const mainOpts = { module_path: modulePath, pos: treePos };
-      renderedFromPackager(mainOpts, res => {
-        const firstElement = res[0];
-        console.log("firstElement", firstElement);
-        this.setState({
-          solids: [firstElement]
-        });
-      });
-    });
-  };
+  // prefetchChildren = () => {
+  // const { modulePath } = this.state;
+  // const allTreePos = this.allTreePositions();
+  // // Turn of prefetching if there are too many children for performance reasons
+  // if (allTreePos.length > 20) {
+  // return;
+  // }
+  // allTreePos.forEach(treePos => {
+  // const mainOpts = { module_path: modulePath, pos: treePos };
+  // renderedFromPackager(mainOpts, res => {
+  // const firstElement = res[0];
+  // console.log("firstElement", firstElement);
+  // this.setState({
+  // solids: [firstElement]
+  // });
+  // });
+  // });
+  // };
 
   transformTreeToTreebeard = tree => {
     const mapObject = (obj, i, parentTreePos) => {
@@ -151,13 +153,14 @@ export default class Home extends Component<Props> {
       if (typeof i !== "undefined") {
         treePos = treePos.concat([i]);
       }
-      const name = obj.elementName;
+      const name = obj.displayName;
       const props = obj.props;
       const children = (obj.children || []).map((obj, i) =>
         mapObject(obj, i, treePos)
       );
       return {
         name,
+        id: obj._randomId,
         children,
         props,
         treePos,
@@ -182,7 +185,8 @@ export default class Home extends Component<Props> {
 
   handleTreeViewSelectedChange = val => {
     this.setState({ treeViewSelected: val }, () => {
-      this.requestRendered();
+      // TODO: remove, as we return all models in one go
+      // this.requestRendered();
     });
   };
 
@@ -191,7 +195,12 @@ export default class Home extends Component<Props> {
   };
 
   render() {
-    const { mainRendered, treeViewHovered, canvasWidth } = this.state;
+    const {
+      mainRendered,
+      treeViewHovered,
+      treeViewSelected,
+      canvasWidth
+    } = this.state;
     const width = canvasWidth;
     const height = 500;
 
@@ -204,6 +213,41 @@ export default class Home extends Component<Props> {
       cursor: "col-resize"
     };
 
+    // TODO: extract into function
+    let solids = [];
+    if (this.state.solids) {
+      solids = this.state.solids;
+      if (treeViewSelected.length !== 0) {
+        let selectedTreeElement = this.state.treebeardData;
+        treeViewSelected.forEach(idx => {
+          selectedTreeElement = selectedTreeElement.children[idx];
+        });
+        const selectedId = selectedTreeElement.id;
+
+        const findCsgById = (csg, id) => {
+          if (csg.id === id) {
+            return csg;
+          }
+          const childResults = csg.children.map(child => {
+            const childCsg = findCsgById(child, id);
+            if (childCsg) {
+              return childCsg;
+            }
+          });
+          const foundChild = childResults.find(Boolean);
+          if (foundChild) {
+            return foundChild;
+          }
+          return null;
+        };
+        // TODO: handle multiple solids
+        const csgById = findCsgById(this.state.solids[0], selectedId);
+        if (csgById) {
+          solids = [csgById];
+        }
+      }
+    }
+
     return (
       <div>
         <SplitPane
@@ -212,11 +256,7 @@ export default class Home extends Component<Props> {
           onDragFinished={this.handleCanvasWidthResize}
         >
           <div id="canvas" style={{ height: "500px" }}>
-            <ReglView
-              solids={this.state.solids || []}
-              width={width}
-              height={height}
-            />
+            <ReglView solids={solids} width={width} height={height} />
           </div>
           <div style={{ width: "100%", height: "100%", overflow: "scroll" }}>
             <TreeView
